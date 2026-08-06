@@ -1,0 +1,48 @@
+{{ if eq .chezmoi.os "linux" -}}
+#!/bin/bash
+set -e
+echo "Starting Linux tool installation..."
+
+# Add ~/.local/bin to PATH so our idempotency checks find newly installed tools
+export PATH="$HOME/.local/bin:$PATH"
+
+# 1. Setup Declarative Repositories
+sudo mkdir -p /etc/apt/keyrings
+
+{{ range .packages.linux.repositories -}}
+if [ ! -f "{{ .list_dest }}" ]; then
+    echo "Adding repository: {{ .name }}..."
+    wget -qO- {{ .key_url }} | sudo gpg --dearmor -o {{ .key_dest }}
+    echo "{{ .repo_source }}" | sudo tee {{ .list_dest }} > /dev/null
+else
+    echo "Repository {{ .name }} already configured. Skipping."
+fi
+{{ end -}}
+
+# 2. Install ALL Declarative APT Packages (apt is natively idempotent)
+sudo apt update
+sudo apt install -y {{ join " " .packages.linux.apt }}
+
+# 3. Create necessary aliases for Ubuntu (using -f to forcefully recreate, making it idempotent)
+mkdir -p ~/.local/bin
+ln -sf $(which fdfind) ~/.local/bin/fd || true
+ln -sf $(which batcat) ~/.local/bin/bat || true
+mkdir -p ~/.config/fish/completions
+
+# 4. Install Declarative Custom Scripts
+{{ range .packages.linux.custom_scripts -}}
+if ! {{ .check }}; then
+    echo "Installing {{ .name }}..."
+    {{ .command }}
+else
+    echo "{{ .name }} is already installed. Skipping."
+fi
+{{ end -}}
+
+# 5. Change default shell to fish idempotently
+if [ "$SHELL" != "$(which fish)" ]; then
+    chsh -s $(which fish)
+fi
+
+echo "Linux installation complete!"
+{{ end -}}

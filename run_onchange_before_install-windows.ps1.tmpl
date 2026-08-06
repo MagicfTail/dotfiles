@@ -1,0 +1,25 @@
+{{ if eq .chezmoi.os "windows" -}}
+Write-Host "Starting Windows tool installation..." -ForegroundColor Cyan
+
+# 1. Install Winget Packages (Natively Idempotent)
+$wingetPackages = @(
+{{- range .packages.windows.winget }}
+    "{{ . }}"
+{{- end }}
+)
+foreach ($package in $wingetPackages) {
+    winget install --id $package -e --accept-package-agreements --accept-source-agreements
+}
+
+# 2. Install PowerShell Modules (Explicitly Idempotent)
+{{- range .packages.windows.psmodules }}
+if (-not (Get-Module -ListAvailable -Name {{ . }})) {
+    Write-Host "Installing PowerShell Module: {{ . }}..."
+    Install-Module -Name {{ . }} -Scope CurrentUser -Force
+} else {
+    Write-Host "PowerShell Module {{ . }} is already installed. Skipping." -ForegroundColor DarkGray
+}
+{{- end }}
+
+Write-Host "Windows installation complete!" -ForegroundColor Green
+{{ end -}}

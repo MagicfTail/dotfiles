@@ -1,0 +1,59 @@
+packages:
+  windows:
+    winget:
+      - Microsoft.VSCode
+      - Git.Git
+      - Starship.Starship
+      - junegunn.fzf
+      - Atuin.Atuin
+      - rsteube.Carapace
+      - ajeetdsouza.zoxide
+      - jdx.mise
+      - eza-community.eza
+      - sharkdp.bat
+      - BurntSushi.ripgrep.MSVC
+      - sharkdp.fd
+    psmodules:
+      - PSFzf
+      - PSReadLine
+  linux:
+    repositories:
+      - name: "VS Code"
+        key_url: "https://packages.microsoft.com/keys/microsoft.asc"
+        key_dest: "/etc/apt/keyrings/packages.microsoft.gpg"
+        repo_source: "deb [arch=amd64,arm64,armhf signed-by=/etc/apt/keyrings/packages.microsoft.gpg] https://packages.microsoft.com/repos/code stable main"
+        list_dest: "/etc/apt/sources.list.d/vscode.list"
+      - name: "Eza"
+        key_url: "https://raw.githubusercontent.com/eza-community/eza/main/deb.asc"
+        key_dest: "/etc/apt/keyrings/gierens.gpg"
+        repo_source: "deb [signed-by=/etc/apt/keyrings/gierens.gpg] http://apt.fury.io/eza/ /"
+        list_dest: "/etc/apt/sources.list.d/gierens.list"
+    apt:
+      - curl
+      - git
+      - wget
+      - unzip
+      - software-properties-common
+      - fd-find
+      - ripgrep
+      - bat
+      - fish
+      - eza
+      - fzf
+      - code
+    custom_scripts:
+      - name: Starship
+        check: "command -v starship >/dev/null 2>&1"
+        command: "curl -sS https://starship.rs/install.sh | sh -s -- -y"
+      - name: Atuin
+        check: "command -v atuin >/dev/null 2>&1"
+        command: "bash <(curl --proto '=https' --tlsv1.2 -sSf https://setup.atuin.sh)"
+      - name: Zoxide
+        check: "command -v zoxide >/dev/null 2>&1"
+        command: "curl -sS https://raw.githubusercontent.com/ajeetdsouza/zoxide/main/install.sh | bash"
+      - name: Mise
+        check: "command -v mise >/dev/null 2>&1"
+        command: "curl https://mise.run | sh"
+      - name: Carapace
+        check: "command -v carapace >/dev/null 2>&1"
+        command: "curl -sS https://carapace.sh/install.sh | sh"
