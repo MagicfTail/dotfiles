@@ -1,0 +1,16 @@
+{{ if eq .chezmoi.os "windows" -}}
+Write-Host ""
+Write-Host "=================================================================" -ForegroundColor Cyan
+Write-Host " Setup Complete! Just a few manual steps left:" -ForegroundColor Green
+Write-Host "=================================================================" -ForegroundColor Cyan
+Write-Host "1. Restart your terminal to load all path changes and your new profile."
+Write-Host "2. Open VS Code and enable 'Settings Sync' to pull your extensions."
+Write-Host "3. Log into Atuin to sync your shell history:"
+Write-Host "   atuin login -u <username> && atuin sync" -ForegroundColor Yellow
+Write-Host "4. Configure your global SDKs via Mise (e.g., node, python, go):"
+Write-Host "   mise use --global node@lts" -ForegroundColor Yellow
+Write-Host "   mise use --global python@latest" -ForegroundColor Yellow
+Write-Host "   mise use --global go@latest" -ForegroundColor Yellow
+Write-Host "=================================================================" -ForegroundColor Cyan
+Write-Host ""
+{{ end -}}
