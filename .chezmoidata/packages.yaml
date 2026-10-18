@@ -5,7 +5,7 @@ packages:
       - Git.Git
       - Starship.Starship
       - junegunn.fzf
-      - Atuin.Atuin
+      - Atuinsh.Atuin
       - rsteube.Carapace
       - ajeetdsouza.zoxide
       - jdx.mise
