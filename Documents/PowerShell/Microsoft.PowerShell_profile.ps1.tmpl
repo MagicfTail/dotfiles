@@ -1,31 +1,77 @@
 {{ if eq .chezmoi.os "windows" -}}
+# Fix missing User PATH in embedded terminals (OpenCode Desktop, etc.)
+$UserPath = [System.Environment]::GetEnvironmentVariable("Path", "User")
+if ($UserPath) {
+    foreach ($p in ($UserPath -split ';')) {
+        if ($p -and ($env:Path -split ';' -notcontains $p)) {
+            $env:Path += ";$p"
+        }
+    }
+}
+
+# Ensure mise shims are always reachable even before 'mise activate' runs
+$MiseShims = "$env:LOCALAPPDATA\mise\shims"
+if ((Test-Path $MiseShims) -and ($env:Path -split ';' -notcontains $MiseShims)) {
+    $env:Path = "$MiseShims;$env:Path"
+}
+
 # Aliases for modern coreutils
 Set-Alias ls eza
 Set-Alias cat bat
 
+# Init-script cache (regenerated when a tool's executable changes)
+# Delete $env:LOCALAPPDATA\pwsh-init-cache after changing any init flags below.
+$initCache = Join-Path $env:LOCALAPPDATA 'pwsh-init-cache'
+New-Item -ItemType Directory -Force $initCache | Out-Null
+function Get-CachedInit([string]$Name, [scriptblock]$Generate) {
+    $exe = (Get-Command $Name -CommandType Application | Select-Object -First 1).Source
+    $file = Join-Path $initCache "$Name.ps1"
+    if (-not (Test-Path $file) -or (Get-Item $exe).LastWriteTime -gt (Get-Item $file).LastWriteTime) {
+        & $Generate | Out-String | Set-Content $file -Encoding utf8
+    }
+    $file
+}
+
 # Mise (Language Manager)
-(&mise activate pwsh) | Out-String | Invoke-Expression
+. (Get-CachedInit mise { mise activate pwsh })
+# Faster alternative if mise is still slow: comment out the line above and use
+# shims instead (no process at startup, but [env] vars from mise.toml aren't set):
+# $env:PATH = "$env:LOCALAPPDATA\mise\shims;$env:PATH"
 
 # Starship
-Invoke-Expression (&starship init powershell)
+. (Get-CachedInit starship { starship init powershell --print-full-init })
 
-# Modules
-Import-Module PSReadLine
-Import-Module PSFzf
+# PSFzf (lazy-loaded on first Ctrl+T / Alt+C)
+function Import-PsFzfLazy {
+    if (-not (Get-Module PSFzf)) {
+        Import-Module PSFzf -Global
+        # PSFzf replaces these placeholder key handlers with its own
+        Set-PsFzfOption -PSReadlineChordProvider 'Ctrl+t' -PSReadlineChordSetLocation 'Alt+c'
+    }
+}
+Set-PSReadLineKeyHandler -Chord 'Ctrl+t' -ScriptBlock {
+    Import-PsFzfLazy
+    Invoke-FzfPsReadlineHandlerProvider
+}
+Set-PSReadLineKeyHandler -Chord 'Alt+c' -ScriptBlock {
+    Import-PsFzfLazy
+    Invoke-FzfPsReadlineHandlerSetLocation
+}
 
-# FZF Hotkeys
-Set-PsFzfOption -PSReadlineChordProvider 'Ctrl+t'
-Set-PsFzfOption -PSReadlineChordSetLocation 'Alt+c'
+# Atuin daemon (started detached; autostart = false in config)
+$atuinListening = [Net.NetworkInformation.IPGlobalProperties]::GetIPGlobalProperties().GetActiveTcpListeners() |
+Where-Object Port -eq 8889
+if (-not $atuinListening) { Start-Process atuin -ArgumentList 'daemon' -WindowStyle Hidden }
 
 # Atuin (History)
-atuin init powershell --disable-up-arrow | Out-String | Invoke-Expression
+. (Get-CachedInit atuin { atuin init powershell --disable-up-arrow })
 
 # Carapace (Command Autocomplete dropdowns)
 Set-PSReadLineOption -Colors @{ "Selection" = "`e[7m" }
 Set-PSReadlineKeyHandler -Key Tab -Function MenuComplete
 $ENV:CARAPACE_BRIDGES = 'zsh,fish,bash,inshellisense'
-carapace _carapace | Out-String | Invoke-Expression
+. (Get-CachedInit carapace { carapace _carapace })
 
 # Zoxide (cd replacement)
-Invoke-Expression (& { (zoxide init --cmd cd powershell | Out-String) })
+. (Get-CachedInit zoxide { zoxide init --cmd cd powershell })
 {{ end -}}
